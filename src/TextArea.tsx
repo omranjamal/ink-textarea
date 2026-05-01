@@ -295,7 +295,17 @@ export const TextArea = ({
         const isOnLastLine = currentLineEnd >= value.length;
         resetBlink();
         if (isOnLastLine) {
-          if (countTrailingEmptyLines(value) >= emptyAutogrowLimit) {
+          // Count trailing empty lines (empty lines after the last line with text)
+          const trailingEmpty = countTrailingEmptyLines(value);
+
+          // Block if: no text exists yet, or we've hit the empty line limit
+          const hasAnyText = value.replace(/\n/g, "").length > 0;
+          if (!hasAnyText) {
+            // No text yet - just stay at end without triggering handler
+            setCursor(value.length);
+            return;
+          }
+          if (trailingEmpty >= emptyAutogrowLimit) {
             if (onLastLineDown) {
               onLastLineDown();
               return;

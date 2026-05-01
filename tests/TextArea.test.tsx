@@ -433,7 +433,7 @@ describe("TextArea", () => {
 
     it("calls onLastLineDown when pressing down after reaching max trailing empty lines", async () => {
       const onLastLineDown = vi.fn();
-      const { stdin, lastFrame } = render(
+      const { stdin } = render(
         <TextArea
           isActive={true}
           onSubmit={() => {}}
@@ -443,7 +443,11 @@ describe("TextArea", () => {
         />,
       );
 
-      // First two Down presses should autogrow (create empty lines)
+      // Type some text first (required for autogrow to work)
+      stdin.write("hello");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // First two Down presses should autogrow (create empty lines after text)
       stdin.write("\x1b[B"); // Down arrow - creates first empty line
       await new Promise((resolve) => setTimeout(resolve, 50));
       stdin.write("\x1b[B"); // Down arrow - creates second empty line
