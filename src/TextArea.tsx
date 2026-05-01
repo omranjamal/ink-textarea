@@ -628,7 +628,7 @@ export const TextArea = ({
           0,
           0,
           initialLineCount,
-          true,
+          false, // First line is never virtual
         )}
         {Array.from({ length: initialLineCount - 1 }, (_, i) =>
           renderLine(<Text> </Text>, i + 1, i + 1, initialLineCount, true),
@@ -652,7 +652,7 @@ export const TextArea = ({
             i,
             i,
             initialLineCount,
-            true,
+            i > 0, // First line (i=0) is never virtual, only lines beyond that
           ),
         )}
       </Box>
