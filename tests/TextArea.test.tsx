@@ -229,7 +229,7 @@ describe("TextArea", () => {
       stdin.write("\x1b[D"); // Left arrow
 
       // Verify onCursorChange is called with position 2 (moved left from 3)
-      expect(onCursorChange).toHaveBeenCalledWith([0, 2]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 2], expect.any(String), expect.any(Number));
     });
 
     it("calls onCursorChange when cursor moves in controlled mode", async () => {
@@ -248,7 +248,7 @@ describe("TextArea", () => {
       stdin.write("\x1b[D"); // Left arrow
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(onCursorChange).toHaveBeenCalledWith([0, 4]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 4], expect.any(String), expect.any(Number));
     });
 
     it("does not update internal state when value prop is provided", async () => {
@@ -326,7 +326,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to line 0 (the only line), column 5 (end of "hello")
-      expect(onCursorChange).toHaveBeenCalledWith([0, 5]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 5], expect.any(String), expect.any(Number));
     });
 
     it("clamps cursor to last column when column exceeds line length", async () => {
@@ -345,7 +345,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to column 2 (length of "hi")
-      expect(onCursorChange).toHaveBeenCalledWith([0, 2]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 2], expect.any(String), expect.any(Number));
     });
 
     it("clamps negative line to 0", async () => {
@@ -364,7 +364,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to line 0, column 2
-      expect(onCursorChange).toHaveBeenCalledWith([0, 2]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 2], expect.any(String), expect.any(Number));
     });
 
     it("clamps negative column to 0", async () => {
@@ -383,7 +383,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to column 0
-      expect(onCursorChange).toHaveBeenCalledWith([0, 0]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 0], expect.any(String), expect.any(Number));
     });
 
     it("handles Infinity as line value", async () => {
@@ -402,7 +402,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to last line (line 2), column 5 ("line3" length)
-      expect(onCursorChange).toHaveBeenCalledWith([2, 5]);
+      expect(onCursorChange).toHaveBeenCalledWith([2, 5], expect.any(String), expect.any(Number));
     });
 
     it("handles Infinity as column value", async () => {
@@ -421,7 +421,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should clamp to column 4 (length of "test")
-      expect(onCursorChange).toHaveBeenCalledWith([0, 4]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 4], expect.any(String), expect.any(Number));
     });
 
     it("correctly positions cursor on specific line in multi-line text", async () => {
@@ -444,7 +444,7 @@ describe("TextArea", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Should have moved from column 3 to column 4 on line 1
-      expect(onCursorChange).toHaveBeenLastCalledWith([1, 4]);
+      expect(onCursorChange).toHaveBeenLastCalledWith([1, 4], expect.any(String), expect.any(Number));
     });
   });
 
@@ -466,7 +466,7 @@ describe("TextArea", () => {
       stdin.write("\x1b[C"); // Right arrow
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(onCursorChange).toHaveBeenCalledWith([0, 1]);
+      expect(onCursorChange).toHaveBeenCalledWith([0, 1], expect.any(String), expect.any(Number));
     });
 
     it("does not move cursor with arrow keys when enableArrowNavigation is false", async () => {

@@ -149,6 +149,66 @@ export const computeVisualDownCursor = (
   return Math.min(nextLineStart + vCol, nextLineEnd);
 };
 
+export type Segment = {
+  readonly start: number;
+  readonly end: number;
+  readonly label: string;
+};
+
+export const computeLabels = (
+  value: string,
+  labels: Record<string, RegExp>,
+): string[] => {
+  const out: string[] = new Array(value.length).fill("text");
+  for (const [name, regex] of Object.entries(labels)) {
+    const flags = regex.flags.includes("g")
+      ? regex.flags
+      : regex.flags + "g";
+    const re = new RegExp(regex.source, flags);
+    for (const m of value.matchAll(re)) {
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      for (let i = start; i < end; i++) {
+        if (out[i] === "text") out[i] = name;
+      }
+    }
+  }
+  return out;
+};
+
+export const computeSegments = (labelByChar: string[]): Segment[] => {
+  const segs: Segment[] = [];
+  if (labelByChar.length === 0) return segs;
+  let start = 0;
+  for (let i = 1; i <= labelByChar.length; i++) {
+    if (i === labelByChar.length || labelByChar[i] !== labelByChar[start]) {
+      segs.push({ start, end: i, label: labelByChar[start]! });
+      start = i;
+    }
+  }
+  return segs;
+};
+
+export const getLabelAt = (
+  labelByChar: string[],
+  cursor: number,
+): string => {
+  if (cursor < 0 || cursor >= labelByChar.length) return "text";
+  return labelByChar[cursor]!;
+};
+
+export const findSegmentIndex = (
+  segments: Segment[],
+  cursor: number,
+): number => {
+  if (segments.length === 0) return 0;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i]!;
+    if (cursor >= s.start && cursor < s.end) return i;
+  }
+  return segments.length;
+};
+
 export const getCursorFromLineColumn = (
   value: string,
   line: number,

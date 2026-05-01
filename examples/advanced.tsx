@@ -1,5 +1,5 @@
 import { render, Box, Text } from "ink";
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import React from "react";
 import { TextArea, LineNumber } from "ink-textarea";
 
@@ -9,6 +9,14 @@ const App = () => {
   const [charCount, setCharCount] = useState(0);
   const [cursorPos, setCursorPos] = useState<[number, number]>([0, 0]);
   const [lineWidth, setLineWidth] = useState(0);
+  const [chunkType, setChunkType] = useState<string>("text");
+  const [chunkIdx, setChunkIdx] = useState<number>(0);
+
+  const labels = useMemo(() => ({ slashCommand: /\/[a-zA-Z]{2,}/g }), []);
+  const styles = useMemo(
+    () => ({ slashCommand: { color: "#ff8800" } }),
+    [],
+  );
 
   const showBoundaryMessage = (message: string) => {
     setBoundaryMessage(message);
@@ -31,6 +39,8 @@ const App = () => {
         placeholder={`Write some code...
 Use arrow keys to navigate
 
+/train to train
+
 Ctrl+Enter for new line`}
         autoNewLineLimit={4}
         initialLineCount={4}
@@ -38,8 +48,14 @@ Ctrl+Enter for new line`}
         onFirstLineUp={() => showBoundaryMessage("[first line up]")}
         onLastLineDown={() => showBoundaryMessage("[last line down]")}
         onChange={(value) => setCharCount(value.length)}
-        onCursorChange={setCursorPos}
+        onCursorChange={(pos, type, idx) => {
+          setCursorPos(pos);
+          setChunkType(type);
+          setChunkIdx(idx);
+        }}
         onDimensions={setLineWidth}
+        labels={labels}
+        styles={styles}
         linePrefix={({
           lineNumber,
           totalLines,
@@ -72,7 +88,7 @@ Ctrl+Enter for new line`}
       />
 
       <Text dimColor>
-        {charCount} characters | Line {cursorPos[0] + 1}, Col {cursorPos[1] + 1} | Width {lineWidth}
+        {charCount} characters | Line {cursorPos[0] + 1}, Col {cursorPos[1] + 1} | Type {chunkType} | Chunk {chunkIdx} | Width {lineWidth}
       </Text>
 
       {boundaryMessage && (

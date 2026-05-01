@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  getCursorLineAndColumn,
-  getCursorFromLineColumn,
-} from "../textUtils.js";
+import { getCursorFromLineColumn } from "../textUtils.js";
 
 type UseCursorStateOptions = {
   controlledValue: string | undefined;
   controlledPosition: [number, number] | undefined;
   onChange: ((value: string) => void) | undefined;
-  onCursorChange: ((position: [number, number]) => void) | undefined;
+  onCursorAttempt:
+    | ((newCursor: number, valueForCalculation?: string) => void)
+    | undefined;
 };
 
 type UseCursorStateReturn = {
@@ -25,7 +24,7 @@ export const useCursorState = ({
   controlledValue,
   controlledPosition,
   onChange,
-  onCursorChange,
+  onCursorAttempt,
 }: UseCursorStateOptions): UseCursorStateReturn => {
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState("");
@@ -38,22 +37,12 @@ export const useCursorState = ({
     valueRef.current = value;
   }, [value]);
 
-  const lastReportedPosition = useRef<[number, number] | null>(null);
-
   const processExternalPosition = (): {
     cursor: number;
-    clampedLine: number;
-    clampedCol: number;
     wasClamped: boolean;
   } => {
     if (controlledPosition === undefined) {
-      const { line, column } = getCursorLineAndColumn(value, internalCursor);
-      return {
-        cursor: internalCursor,
-        clampedLine: line,
-        clampedCol: column,
-        wasClamped: false,
-      };
+      return { cursor: internalCursor, wasClamped: false };
     }
     const [line, col] = controlledPosition;
     const { cursor, clampedLine, clampedCol } = getCursorFromLineColumn(
@@ -61,28 +50,21 @@ export const useCursorState = ({
       line,
       col,
     );
-    const wasClamped = line !== clampedLine || col !== clampedCol;
-    return { cursor, clampedLine, clampedCol, wasClamped };
+    return {
+      cursor,
+      wasClamped: line !== clampedLine || col !== clampedCol,
+    };
   };
 
-  const { cursor, clampedLine, clampedCol, wasClamped } =
-    processExternalPosition();
+  const { cursor, wasClamped } = processExternalPosition();
 
   useEffect(() => {
-    if (wasClamped && onCursorChange) {
-      const newPosition: [number, number] = [clampedLine, clampedCol];
-      if (
-        lastReportedPosition.current === null ||
-        lastReportedPosition.current[0] !== newPosition[0] ||
-        lastReportedPosition.current[1] !== newPosition[1]
-      ) {
-        lastReportedPosition.current = newPosition;
-        onCursorChange(newPosition);
-      }
+    if (wasClamped && onCursorAttempt) {
+      onCursorAttempt(cursor);
     }
-  }, [wasClamped, clampedLine, clampedCol, onCursorChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wasClamped, cursor]);
 
-  // Call onChange with initial value on first render in uncontrolled mode
   useEffect(() => {
     if (!isControlled && onChange) {
       onChange(internalValue);
@@ -106,21 +88,8 @@ export const useCursorState = ({
     if (!isControlled) {
       setInternalCursor(newCursor);
     }
-    if (onCursorChange) {
-      const valueToUse =
-        valueForCalculation !== undefined
-          ? valueForCalculation
-          : valueRef.current;
-      const { line, column } = getCursorLineAndColumn(valueToUse, newCursor);
-      const newPosition: [number, number] = [line, column];
-      if (
-        lastReportedPosition.current === null ||
-        lastReportedPosition.current[0] !== newPosition[0] ||
-        lastReportedPosition.current[1] !== newPosition[1]
-      ) {
-        lastReportedPosition.current = newPosition;
-        onCursorChange(newPosition);
-      }
+    if (onCursorAttempt) {
+      onCursorAttempt(newCursor, valueForCalculation);
     }
   };
 

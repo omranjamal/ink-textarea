@@ -30,9 +30,13 @@ export type TStyleProps = {
   readonly bgColor?: string;
 };
 
-export type TStyles = Partial<
-  Record<"text" | "invisibleCharacter", TStyleProps>
->;
+export type TStyles = {
+  readonly text?: TStyleProps;
+  readonly invisibleCharacter?: TStyleProps;
+  readonly [labelName: string]: TStyleProps | undefined;
+};
+
+export type TLabels = Record<string, RegExp>;
 
 export type TextAreaProps = {
   readonly isActive: boolean;
@@ -52,7 +56,11 @@ export type TextAreaProps = {
   readonly value?: string;
   readonly cursorPosition?: [line: number, col: number];
   readonly onChange?: (value: string) => void;
-  readonly onCursorChange?: (position: [line: number, col: number]) => void;
+  readonly onCursorChange?: (
+    position: [line: number, col: number],
+    type: string,
+    chunkIndex: number,
+  ) => void;
   // Boundary navigation handlers
   readonly onFirstLineUp?: () => void;
   readonly onLastLineDown?: () => void;
@@ -61,4 +69,5 @@ export type TextAreaProps = {
   readonly onDimensions?: (width: number) => void;
   readonly showInvisibles?: TShowInvisibles;
   readonly styles?: TStyles;
+  readonly labels?: TLabels;
 };

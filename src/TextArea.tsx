@@ -1,6 +1,6 @@
 import { Box, Text, useBoxMetrics } from "ink";
 import type { DOMElement } from "ink";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import {
   DEFAULT_CURSOR_INTERVAL,
@@ -15,6 +15,10 @@ import {
   chunkString,
   chunkLineForCursor,
   renderChunkWithCursor,
+  computeLabels,
+  computeSegments,
+  getLabelAt,
+  findSegmentIndex,
 } from "./textUtils.js";
 import { useCursorState } from "./hooks/useCursorState.js";
 import { useUndo } from "./hooks/useUndo.js";
@@ -33,25 +37,37 @@ type InvisiblesConfig = {
   readonly newline: boolean;
 };
 
-type ResolvedStyles = Required<Pick<TStyles, "text" | "invisibleCharacter">>;
-
-const DEFAULT_STYLES: ResolvedStyles = {
-  text: {},
-  invisibleCharacter: { color: "gray", dim: true },
+type ResolvedStyles = {
+  text: TStyleProps;
+  invisibleCharacter: TStyleProps;
+  byLabel: Record<string, TStyleProps>;
 };
+
+const DEFAULT_TEXT_STYLE: TStyleProps = {};
+const DEFAULT_INVISIBLE_STYLE: TStyleProps = { color: "gray", dim: true };
 
 const mergeStyleProps = (
   base: TStyleProps,
   override: TStyleProps | undefined,
 ): TStyleProps => ({ ...base, ...(override ?? {}) });
 
-const resolveStyles = (input: TStyles | undefined): ResolvedStyles => ({
-  text: mergeStyleProps(DEFAULT_STYLES.text, input?.text),
-  invisibleCharacter: mergeStyleProps(
-    DEFAULT_STYLES.invisibleCharacter,
-    input?.invisibleCharacter,
-  ),
-});
+const resolveStyles = (input: TStyles | undefined): ResolvedStyles => {
+  const byLabel: Record<string, TStyleProps> = {};
+  if (input) {
+    for (const [k, v] of Object.entries(input)) {
+      if (k === "text" || k === "invisibleCharacter" || !v) continue;
+      byLabel[k] = { ...v };
+    }
+  }
+  return {
+    text: mergeStyleProps(DEFAULT_TEXT_STYLE, input?.text),
+    invisibleCharacter: mergeStyleProps(
+      DEFAULT_INVISIBLE_STYLE,
+      input?.invisibleCharacter,
+    ),
+    byLabel,
+  };
+};
 
 const styleToTextProps = (s: TStyleProps) => ({
   color: s.color,
@@ -64,32 +80,58 @@ const styleToTextProps = (s: TStyleProps) => ({
   backgroundColor: s.bgColor,
 });
 
-const renderChunkBody = (
-  chunk: string,
-  cursorPos: number,
-  cursorVisible: boolean,
-  isCursorAtLineEnd: boolean,
-  inv: InvisiblesConfig,
-  invisibleProps: ReturnType<typeof styleToTextProps>,
-): ReactNode[] => {
+type RenderChunkBodyArgs = {
+  chunk: string;
+  chunkAbsStart: number;
+  cursorPos: number;
+  cursorVisible: boolean;
+  isCursorAtLineEnd: boolean;
+  inv: InvisiblesConfig;
+  showAnyInvisible: boolean;
+  invisibleProps: ReturnType<typeof styleToTextProps>;
+  labelByChar: string[];
+  labelTextProps: Record<string, ReturnType<typeof styleToTextProps>>;
+};
+
+const renderChunkBody = ({
+  chunk,
+  chunkAbsStart,
+  cursorPos,
+  cursorVisible,
+  isCursorAtLineEnd,
+  inv,
+  showAnyInvisible,
+  invisibleProps,
+  labelByChar,
+  labelTextProps,
+}: RenderChunkBodyArgs): ReactNode[] => {
   const nodes: ReactNode[] = [];
   let buf = "";
+  let bufLabel: string | null = null;
   let segIdx = 0;
   const flush = () => {
     if (buf.length > 0) {
-      nodes.push(<Text key={`s${segIdx++}`}>{buf}</Text>);
+      const lp = bufLabel !== null ? labelTextProps[bufLabel] : undefined;
+      nodes.push(
+        <Text key={`s${segIdx++}`} {...lp}>
+          {buf}
+        </Text>,
+      );
       buf = "";
+      bufLabel = null;
     }
   };
 
   for (let i = 0; i < chunk.length; i++) {
     const ch = chunk[i]!;
+    const charLabel = labelByChar[chunkAbsStart + i] ?? "text";
     const glyph =
-      ch === " " && inv.space
-        ? "·"
-        : ch === "\t" && inv.tab
-          ? "→"
-          : null;
+      showAnyInvisible &&
+      ((ch === " " && inv.space) || (ch === "\t" && inv.tab))
+        ? ch === " "
+          ? "·"
+          : "→"
+        : null;
     const isCursor = i === cursorPos;
 
     if (isCursor) {
@@ -100,15 +142,20 @@ const renderChunkBody = (
         : display === " " && isCursorAtLineEnd
           ? " "
           : display;
-      nodes.push(
-        glyph !== null ? (
+      if (glyph !== null) {
+        nodes.push(
           <Text key={`c${i}`} {...invisibleProps}>
             {cursorStr}
-          </Text>
-        ) : (
-          <Text key={`c${i}`}>{cursorStr}</Text>
-        ),
-      );
+          </Text>,
+        );
+      } else {
+        const lp = labelTextProps[charLabel];
+        nodes.push(
+          <Text key={`c${i}`} {...lp}>
+            {cursorStr}
+          </Text>,
+        );
+      }
     } else if (glyph !== null) {
       flush();
       nodes.push(
@@ -117,7 +164,11 @@ const renderChunkBody = (
         </Text>,
       );
     } else {
+      if (bufLabel !== null && bufLabel !== charLabel) {
+        flush();
+      }
       buf += ch;
+      bufLabel = charLabel;
     }
   }
   flush();
@@ -153,10 +204,24 @@ export const TextArea = ({
   onDimensions,
   showInvisibles = false,
   styles,
+  labels,
 }: TextAreaProps): ReactNode => {
-  const resolvedStyles = resolveStyles(styles);
-  const textProps = styleToTextProps(resolvedStyles.text);
-  const invisibleProps = styleToTextProps(resolvedStyles.invisibleCharacter);
+  const resolvedStyles = useMemo(() => resolveStyles(styles), [styles]);
+  const textProps = useMemo(
+    () => styleToTextProps(resolvedStyles.text),
+    [resolvedStyles.text],
+  );
+  const invisibleProps = useMemo(
+    () => styleToTextProps(resolvedStyles.invisibleCharacter),
+    [resolvedStyles.invisibleCharacter],
+  );
+  const labelTextProps = useMemo(() => {
+    const out: Record<string, ReturnType<typeof styleToTextProps>> = {};
+    for (const [k, v] of Object.entries(resolvedStyles.byLabel)) {
+      out[k] = styleToTextProps(v);
+    }
+    return out;
+  }, [resolvedStyles.byLabel]);
   const inv =
     typeof showInvisibles === "boolean"
       ? {
@@ -170,11 +235,17 @@ export const TextArea = ({
           newline: !!showInvisibles.newline,
         };
   const showAnyInvisible = inv.space || inv.tab || inv.newline;
+  const dispatchCursorRef = useRef<
+    ((cursor: number, valueForCalc?: string) => void) | null
+  >(null);
+
   const { value, cursor, setValue, setCursor } = useCursorState({
     controlledValue,
     controlledPosition,
     onChange,
-    onCursorChange,
+    onCursorAttempt: (newCursor, valueForCalc) => {
+      dispatchCursorRef.current?.(newCursor, valueForCalc);
+    },
   });
 
   const lines = value.split("\n");
@@ -232,6 +303,116 @@ export const TextArea = ({
     cursor,
   );
 
+  const labelByChar = useMemo(
+    () => computeLabels(value, labels ?? {}),
+    [value, labels],
+  );
+  const segments = useMemo(() => computeSegments(labelByChar), [labelByChar]);
+
+  const placeholderLabelByChar = useMemo(
+    () => computeLabels(placeholder ?? "", labels ?? {}),
+    [placeholder, labels],
+  );
+
+  const renderPlaceholderLine = (
+    lineText: string,
+    absStart: number,
+    keyPrefix: string,
+  ): ReactNode[] => {
+    if (lineText.length === 0) {
+      return [
+        <Text key={`${keyPrefix}-empty`} {...textProps} dimColor>
+          {" "}
+        </Text>,
+      ];
+    }
+    const nodes: ReactNode[] = [];
+    let buf = "";
+    let bufLabel: string | null = null;
+    let segCounter = 0;
+    const flush = () => {
+      if (buf.length > 0) {
+        const lp =
+          bufLabel !== null && bufLabel !== "text"
+            ? labelTextProps[bufLabel]
+            : undefined;
+        nodes.push(
+          <Text
+            key={`${keyPrefix}-${segCounter++}`}
+            {...textProps}
+            {...lp}
+            dimColor
+          >
+            {buf}
+          </Text>,
+        );
+        buf = "";
+        bufLabel = null;
+      }
+    };
+    for (let i = 0; i < lineText.length; i++) {
+      const charLabel = placeholderLabelByChar[absStart + i] ?? "text";
+      if (bufLabel !== null && bufLabel !== charLabel) flush();
+      buf += lineText[i];
+      bufLabel = charLabel;
+    }
+    flush();
+    return nodes;
+  };
+
+  const placeholderLineStartOffsets: number[] = [];
+  {
+    let off = 0;
+    const phLines = placeholder ? placeholder.split("\n") : [];
+    for (let i = 0; i < phLines.length; i++) {
+      placeholderLineStartOffsets.push(off);
+      off += phLines[i]!.length + 1;
+    }
+  }
+
+  const lastDispatchRef = useRef<{
+    line: number;
+    col: number;
+    type: string;
+    idx: number;
+  } | null>(null);
+  const prevCursorRef = useRef<number>(cursor);
+
+  const dispatchCursor = (
+    targetCursor: number,
+    valueForCalc?: string,
+  ): void => {
+    if (!onCursorChange) return;
+    const v = valueForCalc ?? value;
+    const { line, column } = getCursorLineAndColumn(v, targetCursor);
+    const type =
+      targetCursor === 0 ? "text" : getLabelAt(labelByChar, targetCursor - 1);
+    const idx =
+      targetCursor === 0 ? 0 : findSegmentIndex(segments, targetCursor - 1);
+    const last = lastDispatchRef.current;
+    if (
+      last !== null &&
+      last.line === line &&
+      last.col === column &&
+      last.type === type &&
+      last.idx === idx
+    ) {
+      return;
+    }
+    lastDispatchRef.current = { line, col: column, type, idx };
+    onCursorChange([line, column], type, idx);
+  };
+
+  dispatchCursorRef.current = dispatchCursor;
+
+  useEffect(() => {
+    if (prevCursorRef.current !== cursor) {
+      dispatchCursor(cursor);
+    }
+    prevCursorRef.current = cursor;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor, cursorLine, cursorColumn, labelByChar, segments]);
+
   const renderLine = (
     content: ReactNode,
     key: string | number,
@@ -288,7 +469,13 @@ export const TextArea = ({
       <Box flexDirection="column">
         {Array.from({ length: initialLineCount }, (_, i) =>
           renderLine(
-            <Text dimColor>{placeholderLines[i] ?? " "}</Text>,
+            <Text>
+              {renderPlaceholderLine(
+                placeholderLines[i] ?? " ",
+                placeholderLineStartOffsets[i] ?? 0,
+                `ph-${i}`,
+              )}
+            </Text>,
             i,
             i,
             initialLineCount,
@@ -310,9 +497,13 @@ export const TextArea = ({
           renderLine(
             <Text {...textProps}>
               {i === cursorLine && cursorVisible ? "\x1b[7m \x1b[27m" : " "}
-              {placeholderLines[i] ? (
-                <Text dimColor>{placeholderLines[i]}</Text>
-              ) : null}
+              {placeholderLines[i]
+                ? renderPlaceholderLine(
+                    placeholderLines[i]!,
+                    placeholderLineStartOffsets[i] ?? 0,
+                    `ph-${i}`,
+                  )
+                : null}
             </Text>,
             i,
             i,
@@ -334,10 +525,22 @@ export const TextArea = ({
 
   const renderedLines: ReactNode[] = [];
 
+  const lineStartOffsets: number[] = [];
+  {
+    let offset = 0;
+    for (let i = 0; i < lines.length; i++) {
+      lineStartOffsets.push(offset);
+      offset += lines[i]!.length + 1; // +1 for the \n
+    }
+  }
+
+  const hasAnyLabelStyle = Object.keys(labelTextProps).length > 0;
+
   for (let lineIdx = 0; lineIdx < linesToRender; lineIdx++) {
     const lineText = lines[lineIdx] ?? "";
     const isVirtualLine = lineIdx >= lines.length;
     const isCursorLine = isActive && lineIdx === cursorLine;
+    const lineAbsStart = lineStartOffsets[lineIdx] ?? value.length;
 
     let chunks: string[];
     if (lineWidth > 0) {
@@ -368,19 +571,26 @@ export const TextArea = ({
           : cursorColumn
         : -1;
       const isCursorAtLineEnd = cursorColumn >= lineText.length;
+      const chunkAbsStart = lineAbsStart + (lineWidth > 0 ? c * lineWidth : 0);
 
       const showPlaceholder =
         !isContinuation && placeholderLines[lineIdx] && !hasContent;
 
-      const bodyNodes: ReactNode[] = showAnyInvisible
-        ? renderChunkBody(
+      const useFullBody = showAnyInvisible || hasAnyLabelStyle;
+
+      const bodyNodes: ReactNode[] = useFullBody
+        ? renderChunkBody({
             chunk,
+            chunkAbsStart,
             cursorPos,
             cursorVisible,
             isCursorAtLineEnd,
             inv,
+            showAnyInvisible,
             invisibleProps,
-          )
+            labelByChar,
+            labelTextProps,
+          })
         : isActiveRow
           ? [
               <Text key="b">
@@ -411,11 +621,13 @@ export const TextArea = ({
                 ↵
               </Text>
             ) : null}
-            {showPlaceholder ? (
-              <Text key="ph" dimColor>
-                {placeholderLines[lineIdx]}
-              </Text>
-            ) : null}
+            {showPlaceholder
+              ? renderPlaceholderLine(
+                  placeholderLines[lineIdx]!,
+                  placeholderLineStartOffsets[lineIdx] ?? 0,
+                  `ph-${lineIdx}`,
+                )
+              : null}
           </Text>,
           `${lineIdx}-${c}`,
           lineIdx,
@@ -434,11 +646,13 @@ export const TextArea = ({
     renderedLines.push(
       renderLine(
         <Text>
-          {placeholderLines[padIdx] && !hasContent ? (
-            <Text dimColor>{placeholderLines[padIdx]}</Text>
-          ) : (
-            " "
-          )}
+          {placeholderLines[padIdx] && !hasContent
+            ? renderPlaceholderLine(
+                placeholderLines[padIdx]!,
+                placeholderLineStartOffsets[padIdx] ?? 0,
+                `ph-pad-${padIdx}`,
+              )
+            : " "}
         </Text>,
         `pad-${padIdx}`,
         padIdx,
