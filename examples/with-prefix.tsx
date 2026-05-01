@@ -41,7 +41,7 @@ const App = () => {
           isVirtualLine,
         }) => (
           <Text>
-            <Text color="gray">│ </Text>
+            <Text color={isActiveLine ? "magentaBright" : "gray"}>│ </Text>
             <Text
               color={
                 isVirtualLine
@@ -53,7 +53,7 @@ const App = () => {
             >
               {String(lineNumber + 1).padStart(String(totalLines).length, " ")}
             </Text>
-            <Text color="gray"> │ </Text>
+            <Text color={isActiveLine ? "magentaBright" : "gray"}> │ </Text>
           </Text>
         )}
       />
