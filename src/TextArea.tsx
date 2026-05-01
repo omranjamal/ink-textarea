@@ -479,8 +479,16 @@ export const TextArea = ({
       if (input && input.length > 0) {
         resetBlink();
         pushUndo("insert");
-        setValue((v) => v.slice(0, cursor) + input + v.slice(cursor));
-        setCursor((c) => c + input.length);
+        // When empty and on a virtual line, prepend newlines to position text correctly
+        const hasAnyText = value.replace(/\n/g, "").length > 0;
+        if (!hasAnyText && virtualLineIndex > 0) {
+          const padding = "\n".repeat(virtualLineIndex);
+          setValue(padding + input);
+          setCursor(padding.length + input.length);
+        } else {
+          setValue((v) => v.slice(0, cursor) + input + v.slice(cursor));
+          setCursor((c) => c + input.length);
+        }
       }
     },
     { isActive },
