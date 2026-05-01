@@ -185,7 +185,7 @@ export const TextArea = ({
   });
 
   const totalLines = Math.max(lines.length, initialLineCount);
-  const hasContent = value.replace(/\n/g, "").length > 0;
+  const hasContent = value.length > 0;
   const { line: cursorLine, column: cursorColumn } = getCursorLineAndColumn(
     value,
     cursor,
