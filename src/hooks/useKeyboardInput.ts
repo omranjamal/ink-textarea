@@ -1,4 +1,4 @@
-import { useInput } from "ink";
+import { useInput, usePaste } from "ink";
 import {
   countTrailingEmptyLines,
   findLineStart,
@@ -48,6 +48,20 @@ export const useKeyboardInput = ({
   resetBlink,
   lineWidth,
 }: UseKeyboardInputOptions): void => {
+  usePaste(
+    (text) => {
+      const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      if (!normalized) return;
+      resetBlink();
+      pushUndo("insert", value, cursor);
+      const newValue =
+        value.slice(0, cursor) + normalized + value.slice(cursor);
+      setValue(newValue);
+      setCursor(cursor + normalized.length, newValue);
+    },
+    { isActive },
+  );
+
   useInput(
     (input, key) => {
       const isCtrlEnter =
