@@ -27,7 +27,9 @@ const App = () => {
       <TextArea
         isActive={true}
         onSubmit={setSubmitted}
-        placeholder="Write some code..."
+        placeholder={`Write some code...
+Use arrow keys to navigate
+Ctrl+Enter for new line`}
         autoNewLineLimit={4}
         initialLineCount={4}
         onFirstLineUp={() => showBoundaryMessage("[first line up]")}
@@ -49,7 +51,7 @@ const App = () => {
             >
               {String(lineNumber + 1).padStart(String(totalLines).length, " ")}
             </Text>
-            <Text color={isActiveLine ? "magenta" : "gray"}> │</Text>
+            <Text color={isActiveLine ? "magenta" : "gray"}> │ </Text>
           </Text>
         )}
       />

@@ -619,19 +619,21 @@ export const TextArea = ({
     );
   };
 
+  // Split placeholder by newlines for multiline support
+  const placeholderLines = placeholder ? placeholder.split("\n") : [];
+
   // Render placeholder when empty and not focused
-  if (value.length === 0 && !isActive && placeholder) {
+  if (value.length === 0 && !isActive && placeholderLines.length > 0) {
     return (
       <Box flexDirection="column">
-        {renderLine(
-          <Text dimColor>{placeholder}</Text>,
-          0,
-          0,
-          initialLineCount,
-          false, // First line is never virtual
-        )}
-        {Array.from({ length: initialLineCount - 1 }, (_, i) =>
-          renderLine(<Text> </Text>, i + 1, i + 1, initialLineCount, true),
+        {Array.from({ length: initialLineCount }, (_, i) =>
+          renderLine(
+            <Text dimColor>{placeholderLines[i] ?? " "}</Text>,
+            i,
+            i,
+            initialLineCount,
+            i > 0,
+          ),
         )}
       </Box>
     );
@@ -645,8 +647,8 @@ export const TextArea = ({
           renderLine(
             <Text>
               {i === cursorLine && cursorVisible ? "\x1b[7m \x1b[27m" : " "}
-              {i === 0 && placeholder ? (
-                <Text dimColor>{placeholder}</Text>
+              {placeholderLines[i] ? (
+                <Text dimColor>{placeholderLines[i]}</Text>
               ) : null}
             </Text>,
             i,
