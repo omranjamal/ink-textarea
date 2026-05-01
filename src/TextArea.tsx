@@ -79,6 +79,8 @@ type TLinePrefixFn = (
   isActiveLine: boolean,
 ) => ReactNode;
 
+export type CursorStyle = "block" | "line" | "underscore";
+
 export type TextAreaProps = {
   readonly isActive: boolean;
   readonly onSubmit: (value: string) => void;
@@ -91,6 +93,19 @@ export type TextAreaProps = {
   readonly maxTrailingEmptyLines?: number;
   readonly highlightActiveLine?: boolean;
   readonly activeLineColor?: string;
+  readonly cursorStyle?: CursorStyle;
+};
+
+const getCursorChar = (style: CursorStyle): string => {
+  switch (style) {
+    case "line":
+      return "│";
+    case "underscore":
+      return "_";
+    case "block":
+    default:
+      return "█";
+  }
 };
 
 export const TextArea = ({
@@ -105,6 +120,7 @@ export const TextArea = ({
   maxTrailingEmptyLines = DEFAULT_MAX_TRAILING_EMPTY_LINES,
   highlightActiveLine = false,
   activeLineColor = undefined,
+  cursorStyle = "block",
 }: TextAreaProps): ReactNode => {
   const [value, setValue] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -438,11 +454,12 @@ export const TextArea = ({
 
   // Render placeholder with cursor when empty and focused
   if (value.length === 0 && isActive) {
+    const cursorChar = getCursorChar(cursorStyle);
     return (
       <Box flexDirection="column">
         {renderLine(
           <Text>
-            {cursorVisible ? "\x1b[7m \x1b[27m" : " "}
+            {cursorVisible ? <Text inverse>{cursorChar}</Text> : " "}
             {placeholder ? <Text dimColor>{placeholder}</Text> : null}
           </Text>,
           0,
@@ -474,15 +491,22 @@ export const TextArea = ({
     const before = lineText.slice(0, cursorColumn);
     const atCursor = lineText[cursorColumn] ?? " ";
     const after = lineText.slice(cursorColumn + 1);
+    const cursorChar = getCursorChar(cursorStyle);
 
     return renderLine(
       <Text>
         {before}
-        {cursorVisible
-          ? `\x1b[7m${atCursor}\x1b[27m`
-          : atCursor === " " && cursorColumn >= lineText.length
-            ? " "
-            : atCursor}
+        {cursorVisible ? (
+          cursorStyle === "block" ? (
+            <Text inverse>{atCursor === " " ? cursorChar : atCursor}</Text>
+          ) : (
+            <Text inverse>{cursorChar}</Text>
+          )
+        ) : atCursor === " " && cursorColumn >= lineText.length ? (
+          " "
+        ) : (
+          atCursor
+        )}
         {after}
         {lineIdx === 0 && !hasContent && placeholder ? (
           <Text dimColor>{placeholder}</Text>
