@@ -6,7 +6,7 @@ const DEFAULT_CURSOR_INTERVAL = 500;
 const DEFAULT_TYPING_PAUSE = 450;
 const DEFAULT_MAX_UNDO = 128;
 const DEFAULT_UNDO_GROUP_DELAY = 2500;
-const DEFAULT_EMPTY_AUTOGROW_LIMIT = 3;
+const DEFAULT_AUTO_NEW_LINE_LIMIT = 3;
 const DEFAULT_INITIAL_LINE_COUNT = 2;
 
 const countTrailingEmptyLines = (text: string): number => {
@@ -89,7 +89,7 @@ export type TextAreaProps = {
   readonly typingPause?: number;
   readonly maxUndo?: number;
   readonly undoGroupDelay?: number;
-  readonly emptyAutogrowLimit?: number;
+  readonly autoNewLineLimit?: number;
   readonly highlightActiveLine?: boolean;
   readonly activeLineColor?: string;
   readonly enableArrowNavigation?: boolean;
@@ -114,7 +114,7 @@ export const TextArea = ({
   typingPause = DEFAULT_TYPING_PAUSE,
   maxUndo = DEFAULT_MAX_UNDO,
   undoGroupDelay = DEFAULT_UNDO_GROUP_DELAY,
-  emptyAutogrowLimit = DEFAULT_EMPTY_AUTOGROW_LIMIT,
+  autoNewLineLimit = DEFAULT_AUTO_NEW_LINE_LIMIT,
   highlightActiveLine = false,
   activeLineColor = undefined,
   enableArrowNavigation = true,
@@ -132,8 +132,6 @@ export const TextArea = ({
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState("");
   const [internalCursor, setInternalCursor] = useState(0);
-  // Track which "virtual" line we're on when textarea is empty (for initialLineCount)
-  const [virtualLineIndex, setVirtualLineIndex] = useState(0);
 
   const value = isControlled ? controlledValue : internalValue;
   const cursor = isControlled
@@ -144,10 +142,6 @@ export const TextArea = ({
     const newValue = typeof updater === "function" ? updater(value) : updater;
     if (!isControlled) {
       setInternalValue(newValue);
-    }
-    // Reset virtual line index when text is added
-    if (newValue.replace(/\n/g, "").length > 0) {
-      setVirtualLineIndex(0);
     }
     onChange?.(newValue);
   };
@@ -272,21 +266,6 @@ export const TextArea = ({
       // Up arrow — move to same column on previous line
       if (key.upArrow) {
         if (!enableArrowNavigation) return;
-        const hasAnyText = value.replace(/\n/g, "").length > 0;
-
-        // Handle virtual lines when empty
-        if (!hasAnyText) {
-          if (virtualLineIndex === 0 && onFirstLineUp) {
-            onFirstLineUp();
-            return;
-          }
-          resetBlink();
-          if (virtualLineIndex > 0) {
-            setVirtualLineIndex((i) => i - 1);
-          }
-          return;
-        }
-
         const { line } = getCursorLineAndColumn(value, cursor);
         if (line === 0 && onFirstLineUp) {
           onFirstLineUp();
@@ -316,24 +295,11 @@ export const TextArea = ({
         const isOnLastLine = currentLineEnd >= value.length;
         resetBlink();
         if (isOnLastLine) {
-          // When empty, use virtual line navigation
-          const hasAnyText = value.replace(/\n/g, "").length > 0;
-          if (!hasAnyText) {
-            if (virtualLineIndex < initialLineCount - 1) {
-              // Navigate through virtual empty lines
-              setVirtualLineIndex((i) => i + 1);
-            } else {
-              // At last virtual line - trigger handler
-              if (onLastLineDown) {
-                onLastLineDown();
-              }
-            }
-            return;
-          }
-
-          // Count trailing empty lines (empty lines after the last line with text)
+          // Count trailing empty lines (lines with no content after them)
           const trailingEmpty = countTrailingEmptyLines(value);
-          if (trailingEmpty >= emptyAutogrowLimit) {
+
+          // Block if we'd exceed the limit of empty lines
+          if (trailingEmpty >= autoNewLineLimit) {
             if (onLastLineDown) {
               onLastLineDown();
               return;
@@ -479,16 +445,8 @@ export const TextArea = ({
       if (input && input.length > 0) {
         resetBlink();
         pushUndo("insert");
-        // When empty and on a virtual line, prepend newlines to position text correctly
-        const hasAnyText = value.replace(/\n/g, "").length > 0;
-        if (!hasAnyText && virtualLineIndex > 0) {
-          const padding = "\n".repeat(virtualLineIndex);
-          setValue(padding + input);
-          setCursor(padding.length + input.length);
-        } else {
-          setValue((v) => v.slice(0, cursor) + input + v.slice(cursor));
-          setCursor((c) => c + input.length);
-        }
+        setValue((v) => v.slice(0, cursor) + input + v.slice(cursor));
+        setCursor((c) => c + input.length);
       }
     },
     { isActive },
@@ -498,12 +456,10 @@ export const TextArea = ({
   const lines = value.split("\n");
   const totalLines = Math.max(lines.length, initialLineCount);
   const hasContent = value.replace(/\n/g, "").length > 0;
-  // When empty, use virtual line index for cursor position
-  const { line: rawCursorLine, column: cursorColumn } = getCursorLineAndColumn(
+  const { line: cursorLine, column: cursorColumn } = getCursorLineAndColumn(
     value,
     cursor,
   );
-  const cursorLine = hasContent ? rawCursorLine : virtualLineIndex;
 
   const renderLine = (
     content: ReactNode,

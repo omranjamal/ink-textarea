@@ -439,7 +439,7 @@ describe("TextArea", () => {
           onSubmit={() => {}}
           placeholder="Type here..."
           onLastLineDown={onLastLineDown}
-          emptyAutogrowLimit={2}
+          autoNewLineLimit={2}
         />,
       );
 
