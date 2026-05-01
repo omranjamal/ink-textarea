@@ -17,7 +17,7 @@ const App = () => {
   };
 
   return (
-    <Box flexDirection="column" gap={1} padding={2}>
+    <Box flexDirection="column" gap={1} padding={2} width={64}>
       <Text bold>TextArea with Line Prefix</Text>
       <Text dimColor>
         This example shows line numbers and a border. Try pressing ↑ on first

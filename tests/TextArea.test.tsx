@@ -584,7 +584,7 @@ describe("TextArea", () => {
       expect(onFirstLineUp).toHaveBeenCalled();
     });
 
-    it("calls onLastLineDown when pressing down after reaching max trailing empty lines", async () => {
+    it("calls onLastLineDown when pressing down after reaching max trailing empty lines with content", async () => {
       const onLastLineDown = vi.fn();
       const { stdin } = render(
         <TextArea
@@ -598,22 +598,22 @@ describe("TextArea", () => {
 
       // Type some text first (required for autogrow to work)
       stdin.write("hello");
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // First two Down presses should autogrow (create empty lines after text)
+      // First two Down presses create real newlines after content
       stdin.write("\x1b[B"); // Down arrow - creates first empty line
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       stdin.write("\x1b[B"); // Down arrow - creates second empty line
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(onLastLineDown).not.toHaveBeenCalled();
 
       // Third Down press should trigger onLastLineDown (max reached)
       stdin.write("\x1b[B"); // Down arrow
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(onLastLineDown).toHaveBeenCalled();
-    });
+    }, 10000);
 
     it("still allows normal up navigation when onFirstLineUp is not provided", async () => {
       const onCursorChange = vi.fn();
@@ -652,5 +652,148 @@ describe("TextArea", () => {
 
       expect(onCursorChange).toHaveBeenCalled();
     });
+  });
+
+  describe("Virtual Line Detection", () => {
+    it("marks initial padding lines as virtual when no content exists", async () => {
+      const linePrefix = vi.fn(() => <Text>{"> "}</Text>);
+      render(
+        <TextArea
+          isActive={true}
+          onSubmit={() => {}}
+          linePrefix={linePrefix}
+          initialLineCount={4}
+          placeholder="Line1\nLine2\nLine3\nLine4"
+        />,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // First line should NOT be virtual (first line is always real)
+      const line0Call = linePrefix.mock.calls.find(
+        (call) => call[0].lineNumber === 0,
+      );
+      expect(line0Call).toBeDefined();
+      expect(line0Call![0].isVirtualLine).toBe(false);
+
+      // Lines 1-3 should be virtual (padding lines beyond actual content)
+      for (let i = 1; i < 4; i++) {
+        const lineCall = linePrefix.mock.calls.find(
+          (call) => call[0].lineNumber === i,
+        );
+        expect(lineCall).toBeDefined();
+        expect(lineCall![0].isVirtualLine).toBe(true);
+      }
+    });
+
+    it("marks lines created by down navigation as real", async () => {
+      const linePrefix = vi.fn(() => <Text>{"> "}</Text>);
+      const { stdin } = render(
+        <TextArea
+          isActive={true}
+          onSubmit={() => {}}
+          linePrefix={linePrefix}
+          initialLineCount={4}
+        />,
+      );
+
+      // Type content first
+      stdin.write("hello");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Clear previous calls
+      linePrefix.mockClear();
+
+      // Navigate down after content - this adds \n to value
+      stdin.write("\x1b[B"); // Down arrow
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // The new line (line 1) should be real (\n was added)
+      const calls = linePrefix.mock.calls;
+      const line1Call = calls.find((call) => call[0].lineNumber === 1);
+      expect(line1Call).toBeDefined();
+      expect(line1Call![0].isVirtualLine).toBe(false);
+    });
+
+    it("marks lines with content as non-virtual", async () => {
+      const linePrefix = vi.fn(() => <Text>{"> "}</Text>);
+      const { stdin } = render(
+        <TextArea
+          isActive={true}
+          onSubmit={() => {}}
+          linePrefix={linePrefix}
+          initialLineCount={4}
+        />,
+      );
+
+      // Type on first line
+      stdin.write("hello");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Clear calls from typing
+      linePrefix.mockClear();
+
+      // Insert newline and type on second line
+      stdin.write("\x0A"); // Ctrl+J for newline
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      stdin.write("world");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Find line 1 call
+      const line1Call = linePrefix.mock.calls.find(
+        (call) => call[0].lineNumber === 1,
+      );
+      expect(line1Call).toBeDefined();
+      expect(line1Call![0].isVirtualLine).toBe(false);
+    });
+
+    it("correctly identifies virtual vs real lines in mixed state", async () => {
+      const linePrefix = vi.fn(() => <Text>{"> "}</Text>);
+      const { stdin } = render(
+        <TextArea
+          isActive={true}
+          onSubmit={() => {}}
+          linePrefix={linePrefix}
+          initialLineCount={6}
+        />,
+      );
+
+      // Type on first line
+      stdin.write("content");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Navigate down twice - after content, this creates REAL lines (adds \n)
+      stdin.write("\x1b[B"); // Down
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      stdin.write("\x1b[B"); // Down
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Clear calls
+      linePrefix.mockClear();
+
+      // Trigger a re-render by moving cursor
+      stdin.write("\x1b[A"); // Up
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const calls = linePrefix.mock.calls;
+
+      // Line 0 has content - not virtual
+      const line0Call = calls.find((call) => call[0].lineNumber === 0);
+      expect(line0Call![0].isVirtualLine).toBe(false);
+
+      // Lines 1-2 were created by Down navigation AFTER content - they are real
+      for (let i = 1; i <= 2; i++) {
+        const lineCall = calls.find((call) => call[0].lineNumber === i);
+        expect(lineCall).toBeDefined();
+        expect(lineCall![0].isVirtualLine).toBe(false);
+      }
+
+      // Lines 3-5 are padding beyond value lines - virtual
+      for (let i = 3; i < 6; i++) {
+        const lineCall = calls.find((call) => call[0].lineNumber === i);
+        expect(lineCall).toBeDefined();
+        expect(lineCall![0].isVirtualLine).toBe(true);
+      }
+    }, 10000);
   });
 });

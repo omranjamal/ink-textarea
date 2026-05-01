@@ -425,6 +425,7 @@ export const TextArea = ({
             setCursor(value.length);
             return;
           }
+
           // On last line — insert a new line and move cursor there
           pushUndo("insert");
           const newValue = value + "\n";
@@ -669,6 +670,7 @@ export const TextArea = ({
   const renderedLines = Array.from({ length: linesToRender }, (_, lineIdx) => {
     const lineText = lines[lineIdx] ?? "";
     const isCursorLine = lineIdx === cursorLine;
+    const isVirtualLine = lineIdx >= lines.length;
 
     if (!isCursorLine || !isActive) {
       return renderLine(
@@ -681,7 +683,7 @@ export const TextArea = ({
         lineIdx,
         lineIdx,
         totalLines,
-        false,
+        isVirtualLine,
       );
     }
 
@@ -705,7 +707,7 @@ export const TextArea = ({
       lineIdx,
       lineIdx,
       totalLines,
-      false,
+      isVirtualLine,
     );
   });
 
