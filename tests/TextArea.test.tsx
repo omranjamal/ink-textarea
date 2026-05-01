@@ -1160,9 +1160,9 @@ describe("TextArea", () => {
       expect(lastFrame()).toContain("hello");
     });
 
-    it("onDimensions not called when measuredWidth is 0 (test environment)", async () => {
+    it("onDimensions fires once on initial measurement before any input", async () => {
       const onDimensions = vi.fn();
-      const { stdin } = render(
+      render(
         <TextArea
           isActive={true}
           onSubmit={() => {}}
@@ -1170,11 +1170,11 @@ describe("TextArea", () => {
         />,
       );
 
-      stdin.write("hello");
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // useBoxMetrics returns 0 in test env, so onDimensions should not be called
-      expect(onDimensions).not.toHaveBeenCalled();
+      expect(onDimensions).toHaveBeenCalled();
+      const width = onDimensions.mock.calls[0]![0];
+      expect(width).toBeGreaterThan(0);
     });
   });
 

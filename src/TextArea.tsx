@@ -68,8 +68,7 @@ export const TextArea = ({
     if (measuredWidth > 0) {
       onDimensions?.(measuredWidth);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines.length]);
+  }, [measuredWidth, onDimensions]);
 
   const { pushUndo, popUndo, resetMutationTracking } = useUndo({
     maxUndo,
