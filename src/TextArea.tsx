@@ -251,12 +251,6 @@ export const TextArea = ({
         isAltEnter
       ) {
         resetBlink();
-        if (
-          cursor >= value.length &&
-          countTrailingEmptyLines(value) >= emptyAutogrowLimit
-        ) {
-          return;
-        }
         pushUndo("insert");
         setValue((v) => v.slice(0, cursor) + "\n" + v.slice(cursor));
         setCursor((c) => c + 1);
@@ -574,8 +568,8 @@ export const TextArea = ({
     );
   });
 
-  // Pad to minimum 2 lines so the input visually signals multi-line
-  while (renderedLines.length < 2) {
+  // Pad to minimum initialLineCount lines so the input visually signals multi-line
+  while (renderedLines.length < initialLineCount) {
     const padIdx = renderedLines.length;
     renderedLines.push(
       renderLine(<Text> </Text>, `pad-${padIdx}`, padIdx, totalLines),
