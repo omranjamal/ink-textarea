@@ -4,8 +4,7 @@ import { Text } from "ink";
 import { useState, type ReactNode } from "react";
 import { TextArea, LineNumber } from "../../src/index.js";
 import type { TLinePrefixFn } from "../../src/types.js";
-
-const tick = () => new Promise((r) => setTimeout(r, 100));
+import { tick, settle } from "../_util/wait.js";
 
 // eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
@@ -92,7 +91,7 @@ describe("TextArea > viewport virtualization", () => {
 
     for (let i = 0; i < 7; i++) {
       stdin.write("\x1b[B");
-      await tick();
+      await settle(lastFrame);
     }
 
     const frame = strip(lastFrame());
@@ -109,13 +108,13 @@ describe("TextArea > viewport virtualization", () => {
 
     for (let i = 0; i < 8; i++) {
       stdin.write("\x1b[B");
-      await tick();
+      await settle(lastFrame);
     }
     expect(strip(lastFrame())).not.toContain("row0");
 
     for (let i = 0; i < 8; i++) {
       stdin.write("\x1b[A");
-      await tick();
+      await settle(lastFrame);
     }
     expect(strip(lastFrame())).toContain("row0");
   }, 30000);
@@ -160,7 +159,7 @@ describe("TextArea > viewport virtualization", () => {
 
     for (let i = 0; i < 12; i++) {
       stdin.write("\x1b[B");
-      await tick();
+      await settle(lastFrame);
     }
 
     const frame = strip(lastFrame());
@@ -171,7 +170,7 @@ describe("TextArea > viewport virtualization", () => {
     expect(hasHighRow).toBe(true);
     const hasHighLineNumber = /(?:^|\s)([6-9]|1[0-9])\s/.test(frame);
     expect(hasHighLineNumber).toBe(true);
-  });
+  }, 30000);
 
   it("does not exceed viewportLines visible rows after typing many newlines", async () => {
     const { stdin, lastFrame } = render(
@@ -183,12 +182,13 @@ describe("TextArea > viewport virtualization", () => {
     );
     await tick();
 
-    for (let i = 0; i < 8; i++) {
-      stdin.write(`x${i}`);
-      await tick();
-      stdin.write("\x0a"); // Ctrl+J -> newline insert
-      await tick();
-    }
+    // Write all keystrokes in one shot — ink's stdin handler processes
+    // them sequentially, no per-press race window. Single settle at the
+    // end is then bounded by one renderer settle, not 16.
+    let seq = "";
+    for (let i = 0; i < 8; i++) seq += `x${i}\x0a`;
+    stdin.write(seq);
+    await settle(lastFrame);
 
     const frame = lastFrame();
     // We don't assert exact count (chrome rows etc) but ensure recent input visible

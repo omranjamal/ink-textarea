@@ -40,7 +40,7 @@ const App = () => {
       <Text bold>TextArea with Line Prefix</Text>
       <Text dimColor>
         This example shows line numbers and a border. Try pressing ↑ on first
-        line or ↓ on last line!
+        line, ↓ on last line, ← at start, or → at end!
       </Text>
 
       <TextArea
@@ -57,6 +57,12 @@ Ctrl+Enter for new line`}
         showInvisibles={true}
         onFirstLineUp={() => showBoundaryMessage("[first line up]")}
         onLastLineDown={() => showBoundaryMessage("[last line down]")}
+        onFirstCharacterLeft={() =>
+          showBoundaryMessage("[first character left]")
+        }
+        onLastCharacterRight={() =>
+          showBoundaryMessage("[last character right]")
+        }
         onChange={(value) => setCharCount(value.length)}
         onCursorChange={(pos, type, idx) => {
           setCursorPos(pos);

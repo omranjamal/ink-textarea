@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "ink-testing-library";
 import { TextArea } from "../../src/index.js";
+import { settle } from "../_util/wait.js";
 
 describe("TextArea > Undo/Redo", () => {
   it("Ctrl+Z reverts last character", async () => {
@@ -53,7 +54,7 @@ describe("TextArea > Undo/Redo", () => {
     stdin.write("\x1a");
     await new Promise((resolve) => setTimeout(resolve, 50));
     stdin.write("\x1a");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await settle(lastFrame);
 
     expect(lastFrame()).not.toMatch(/[abc]/);
   });
@@ -78,7 +79,7 @@ describe("TextArea > Undo/Redo", () => {
     stdin.write("\x1a");
     await new Promise((resolve) => setTimeout(resolve, 50));
     stdin.write("\x1a");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await settle(lastFrame);
 
     const frame = lastFrame()!;
     expect(frame).not.toContain("abc");
@@ -95,7 +96,7 @@ describe("TextArea > Undo/Redo", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     stdin.write("\x1a");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await settle(lastFrame);
 
     expect(lastFrame()).toContain("x");
     expect(lastFrame()).not.toContain("y");

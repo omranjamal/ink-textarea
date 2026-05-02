@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "ink-testing-library";
 import { TextArea } from "../../src/index.js";
+import { waitFor } from "../_util/wait.js";
 
 describe("TextArea > Navigation Lock", () => {
   it("moves cursor with arrow keys when enableArrowNavigation is true", async () => {
@@ -157,7 +158,7 @@ describe("TextArea > Boundary Navigation Handlers", () => {
     expect(onLastLineDown).not.toHaveBeenCalled();
 
     stdin.write("\x1b[B");
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => onLastLineDown.mock.calls.length > 0);
 
     expect(onLastLineDown).toHaveBeenCalled();
   }, 10000);
