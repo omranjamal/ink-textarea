@@ -36,7 +36,12 @@ export type TStyles = {
   readonly [labelName: string]: TStyleProps | undefined;
 };
 
-export type TLabels = Record<string, RegExp>;
+export type TLabelFn = (match: RegExpMatchArray) => string | undefined;
+export type TLabelRule = {
+  readonly pattern: RegExp;
+  readonly label: string | TLabelFn;
+};
+export type TLabels = readonly TLabelRule[];
 
 export type TextAreaProps = {
   readonly isActive: boolean;
@@ -63,6 +68,8 @@ export type TextAreaProps = {
   // Boundary navigation handlers
   readonly onFirstLineUp?: () => void;
   readonly onLastLineDown?: () => void;
+  readonly onFirstCharacterLeft?: () => void;
+  readonly onLastCharacterRight?: () => void;
   readonly onTab?: (shift: boolean) => void;
   // Initial line count
   readonly initialLineCount?: number;

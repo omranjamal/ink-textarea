@@ -1,7 +1,9 @@
 import { render, Box, Text } from "ink";
 import { useState, useMemo } from "react";
 import React from "react";
-import { TextArea, LineNumber } from "ink-textarea";
+import { TextArea, LineNumber, type TLabels } from "ink-textarea";
+
+const SLASH_COMMANDS = new Set(["/train", "/help", "/quit"]);
 
 const App = () => {
   const [submitted, setSubmitted] = useState("");
@@ -12,7 +14,15 @@ const App = () => {
   const [chunkType, setChunkType] = useState<string>("text");
   const [chunkIdx, setChunkIdx] = useState<number>(0);
 
-  const labels = useMemo(() => ({ slashCommand: /\/[a-zA-Z]{2,}/g }), []);
+  const labels = useMemo<TLabels>(
+    () => [
+      {
+        pattern: /\/[a-zA-Z]+/g,
+        label: (m) => (SLASH_COMMANDS.has(m[0]) ? "slashCommand" : undefined),
+      },
+    ],
+    [],
+  );
   const styles = useMemo(
     () => ({ slashCommand: { color: "#ff8800" } }),
     [],

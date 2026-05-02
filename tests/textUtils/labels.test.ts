@@ -7,8 +7,10 @@ import {
 } from "../../src/textUtils.js";
 
 describe("computeLabels", () => {
-  it("labels chars matching a regex with the key name", () => {
-    const out = computeLabels("hi there", { word: /[a-zA-Z]{2,}/g });
+  it("labels chars matching a regex with the rule label", () => {
+    const out = computeLabels("hi there", [
+      { pattern: /[a-zA-Z]{2,}/g, label: "word" },
+    ]);
     expect(out).toEqual([
       "word",
       "word",
@@ -21,24 +23,56 @@ describe("computeLabels", () => {
     ]);
   });
 
-  it("first key wins when ranges overlap", () => {
-    const out = computeLabels("abcdef", { a: /[a-z]+/g, b: /[a-c]+/g });
+  it("first rule wins when ranges overlap", () => {
+    const out = computeLabels("abcdef", [
+      { pattern: /[a-z]+/g, label: "a" },
+      { pattern: /[a-c]+/g, label: "b" },
+    ]);
     expect(out.every((l) => l === "a")).toBe(true);
   });
 
   it("does not infinite-loop on zero-length matches", () => {
-    const out = computeLabels("abc", { z: /(?:)/g });
+    const out = computeLabels("abc", [{ pattern: /(?:)/g, label: "z" }]);
     expect(out).toEqual(["text", "text", "text"]);
   });
 
   it("returns empty array for empty value", () => {
-    expect(computeLabels("", { w: /\w+/g })).toEqual([]);
+    expect(computeLabels("", [{ pattern: /\w+/g, label: "w" }])).toEqual([]);
+  });
+
+  it("function label returns string applied to match", () => {
+    const out = computeLabels("hi", [
+      { pattern: /.+/g, label: (m) => m[0].toUpperCase() },
+    ]);
+    expect(out).toEqual(["HI", "HI"]);
+  });
+
+  it("function label returning undefined leaves match unlabeled", () => {
+    const out = computeLabels("/train /tomato", [
+      {
+        pattern: /\/[a-z]+/g,
+        label: (m) => (m[0] === "/train" ? "cmd" : undefined),
+      },
+    ]);
+    // "/train" → cmd (6 chars), " " → text, "/tomato" → text (7 chars)
+    expect(out.slice(0, 6)).toEqual(["cmd", "cmd", "cmd", "cmd", "cmd", "cmd"]);
+    expect(out.slice(6)).toEqual(Array(8).fill("text"));
+  });
+
+  it("multiple rules can map to same label", () => {
+    const out = computeLabels("ab12", [
+      { pattern: /[a-z]+/g, label: "tok" },
+      { pattern: /[0-9]+/g, label: "tok" },
+    ]);
+    expect(out).toEqual(["tok", "tok", "tok", "tok"]);
   });
 });
 
 describe("computeSegments", () => {
   it("returns alternating runs by label", () => {
-    const labelByChar = computeLabels("hi there", { word: /[a-zA-Z]{2,}/g });
+    const labelByChar = computeLabels("hi there", [
+      { pattern: /[a-zA-Z]{2,}/g, label: "word" },
+    ]);
     expect(computeSegments(labelByChar)).toEqual([
       { start: 0, end: 2, label: "word" },
       { start: 2, end: 3, label: "text" },

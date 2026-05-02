@@ -23,6 +23,8 @@ type UseKeyboardInputOptions = {
   onSubmit: (value: string) => void;
   onFirstLineUp: (() => void) | undefined;
   onLastLineDown: (() => void) | undefined;
+  onFirstCharacterLeft: (() => void) | undefined;
+  onLastCharacterRight: (() => void) | undefined;
   onTab: ((shift: boolean) => void) | undefined;
   setValue: (updater: string | ((prev: string) => string)) => void;
   setCursor: {
@@ -46,6 +48,8 @@ export const useKeyboardInput = ({
   onSubmit,
   onFirstLineUp,
   onLastLineDown,
+  onFirstCharacterLeft,
+  onLastCharacterRight,
   onTab,
   setValue,
   setCursor,
@@ -183,6 +187,10 @@ export const useKeyboardInput = ({
 
       if (key.leftArrow) {
         if (!enableArrowNavigation) return;
+        if (cursor === 0) {
+          if (onFirstCharacterLeft) onFirstCharacterLeft();
+          return;
+        }
         resetBlink();
         setCursor((c) => prevGraphemeOffset(value, c));
         return;
@@ -190,6 +198,10 @@ export const useKeyboardInput = ({
 
       if (key.rightArrow) {
         if (!enableArrowNavigation) return;
+        if (cursor === value.length) {
+          if (onLastCharacterRight) onLastCharacterRight();
+          return;
+        }
         resetBlink();
         setCursor((c) => nextGraphemeOffset(value, c));
         return;

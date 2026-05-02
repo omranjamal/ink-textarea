@@ -1,4 +1,5 @@
 import stringWidth from "string-width";
+import type { TLabelRule } from "./types.js";
 
 const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 
@@ -253,21 +254,24 @@ export type Segment = {
 
 export const computeLabels = (
   value: string,
-  labels: Record<string, RegExp>,
+  labels: readonly TLabelRule[],
 ): string[] => {
-  const labelEntries = Object.entries(labels);
-  if (labelEntries.length === 0 || value.length === 0) return [];
+  if (labels.length === 0 || value.length === 0) return [];
   const out: string[] = new Array(value.length).fill("text");
-  for (const [name, regex] of labelEntries) {
-    const flags = regex.flags.includes("g")
-      ? regex.flags
-      : regex.flags + "g";
-    const re = new RegExp(regex.source, flags);
+  for (const rule of labels) {
+    const flags = rule.pattern.flags.includes("g")
+      ? rule.pattern.flags
+      : rule.pattern.flags + "g";
+    const re = new RegExp(rule.pattern.source, flags);
     for (const m of value.matchAll(re)) {
       const start = m.index ?? 0;
       const end = start + m[0].length;
+      if (end === start) continue;
+      const resolved =
+        typeof rule.label === "string" ? rule.label : rule.label(m);
+      if (!resolved) continue;
       for (let i = start; i < end; i++) {
-        if (out[i] === "text") out[i] = name;
+        if (out[i] === "text") out[i] = resolved;
       }
     }
   }

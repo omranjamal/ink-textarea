@@ -222,6 +222,8 @@ export const TextArea = ({
   onCursorChange,
   onFirstLineUp,
   onLastLineDown,
+  onFirstCharacterLeft,
+  onLastCharacterRight,
   onTab,
   initialLineCount = DEFAULT_INITIAL_LINE_COUNT,
   viewportLines,
@@ -345,6 +347,8 @@ export const TextArea = ({
     onSubmit,
     onFirstLineUp,
     onLastLineDown,
+    onFirstCharacterLeft,
+    onLastCharacterRight,
     onTab,
     setValue,
     setCursor,
@@ -360,13 +364,13 @@ export const TextArea = ({
   const hasContent = value.length > 0;
 
   const labelByChar = useMemo(
-    () => computeLabels(value, labels ?? {}),
+    () => computeLabels(value, labels ?? []),
     [value, labels],
   );
   const segments = useMemo(() => computeSegments(labelByChar), [labelByChar]);
 
   const placeholderLabelByChar = useMemo(
-    () => computeLabels(placeholder ?? "", labels ?? {}),
+    () => computeLabels(placeholder ?? "", labels ?? []),
     [placeholder, labels],
   );
 

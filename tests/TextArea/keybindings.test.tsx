@@ -225,4 +225,94 @@ describe("TextArea > Keybindings", () => {
     expect(onTab).toHaveBeenCalledTimes(1);
     expect(onTab).toHaveBeenCalledWith(true);
   });
+
+  it("fires onFirstCharacterLeft when left arrow pressed at cursor 0", async () => {
+    const onFirstCharacterLeft = vi.fn();
+    const { stdin } = render(
+      <TextArea
+        isActive={true}
+        onSubmit={() => {}}
+        value="abc"
+        cursorPosition={[0, 0]}
+        onChange={() => {}}
+        onFirstCharacterLeft={onFirstCharacterLeft}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("\x1b[D");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onFirstCharacterLeft).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire onFirstCharacterLeft when left arrow can move", async () => {
+    const onFirstCharacterLeft = vi.fn();
+    const { stdin } = render(
+      <TextArea
+        isActive={true}
+        onSubmit={() => {}}
+        value="abc"
+        cursorPosition={[0, 1]}
+        onChange={() => {}}
+        onFirstCharacterLeft={onFirstCharacterLeft}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("\x1b[D");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onFirstCharacterLeft).not.toHaveBeenCalled();
+  });
+
+  it("fires onLastCharacterRight when right arrow pressed at end of value", async () => {
+    const onLastCharacterRight = vi.fn();
+    const { stdin } = render(
+      <TextArea
+        isActive={true}
+        onSubmit={() => {}}
+        value="abc"
+        cursorPosition={[0, 3]}
+        onChange={() => {}}
+        onLastCharacterRight={onLastCharacterRight}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("\x1b[C");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onLastCharacterRight).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire onLastCharacterRight when right arrow can move", async () => {
+    const onLastCharacterRight = vi.fn();
+    const { stdin } = render(
+      <TextArea
+        isActive={true}
+        onSubmit={() => {}}
+        value="abc"
+        cursorPosition={[0, 0]}
+        onChange={() => {}}
+        onLastCharacterRight={onLastCharacterRight}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("\x1b[C");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onLastCharacterRight).not.toHaveBeenCalled();
+  });
+
+  it("does not fire onFirstCharacterLeft on multi-line wrap to previous line", async () => {
+    const onFirstCharacterLeft = vi.fn();
+    const { stdin } = render(
+      <TextArea
+        isActive={true}
+        onSubmit={() => {}}
+        value={"ab\ncd"}
+        cursorPosition={[1, 0]}
+        onChange={() => {}}
+        onFirstCharacterLeft={onFirstCharacterLeft}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("\x1b[D");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onFirstCharacterLeft).not.toHaveBeenCalled();
+  });
 });
