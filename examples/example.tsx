@@ -20,6 +20,7 @@ const App = () => {
   const [lineWidth, setLineWidth] = useState(0);
   const [chunkType, setChunkType] = useState<string>("text");
   const [chunkIdx, setChunkIdx] = useState<number>(0);
+  const [activeBox, setActiveBox] = useState<0 | 1>(0);
 
   const labels = useMemo<TLabels>(
     () => [
@@ -47,20 +48,20 @@ const App = () => {
   };
 
   return (
-    <Box flexDirection="column" gap={1} paddingY={3} paddingX={6}>
-      <Box flexDirection="column" width={64} borderStyle="single" paddingY={1} paddingX={3} borderDimColor borderColor={'gray'}>
+    <Box flexDirection="column" gap={1} paddingY={1} paddingX={6}>
+      <Box flexDirection="column" width={64} borderStyle="single" paddingY={1} paddingX={3} borderDimColor borderColor={activeBox === 0 ? 'cyan' : 'gray'}>
         <Box flexDirection="row" gap={2} marginBottom={1}>
-          <Text bold dimColor>DEMO</Text>
-          <Text dimColor color={'gray'}>Stuff inside this box is rendered by ink-textarea</Text>
+          <Text bold dimColor>DEMO 1 {activeBox === 0 ? '(focused)' : '(Tab to focus)'}</Text>
         </Box>
         <TextArea
-          focus={true}
+          focus={activeBox === 0}
           onSubmit={setSubmitted}
           placeholder={PLACEHOLDER}
           autoNewLineLimit={4}
           viewportLines={10}
           initialLineCount={5}
           showInvisibles={true}
+          onTab={() => setActiveBox(1)}
           onFirstLineUp={() => showBoundaryMessage("[first line up]")}
           onLastLineDown={() => showBoundaryMessage("[last line down]")}
           onFirstCharacterLeft={() =>
@@ -79,6 +80,25 @@ const App = () => {
           labels={labels}
           styles={styles}
           linePrefix={LineNumberPrefix}
+        />
+      </Box>
+
+      <Box flexDirection="column" width={64} borderStyle="single" paddingY={1} paddingX={3} borderDimColor borderColor={activeBox === 1 ? 'cyan' : 'gray'}>
+        <Box flexDirection="row" gap={2} marginBottom={1}>
+          <Text bold dimColor>DEMO 2 {activeBox === 1 ? '(focused)' : '(Tab to focus)'}</Text>
+        </Box>
+        <TextArea
+          focus={activeBox === 1}
+          onSubmit={setSubmitted}
+          placeholder="Second textarea — Tab cycles back."
+          autoNewLineLimit={2}
+          initialLineCount={3}
+          onTab={() => setActiveBox(0)}
+          labels={labels}
+          styles={styles}
+          linePrefix={({ isActiveLine }) => (
+            <Text color={isActiveLine ? 'cyan' : 'gray'}>│ </Text>
+          )}
         />
       </Box>
 

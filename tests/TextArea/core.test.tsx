@@ -26,8 +26,9 @@ describe("TextArea", () => {
       />,
     );
 
-    const frame = lastFrame()!;
-    expect(frame).toContain("Type here...");
+    // eslint-disable-next-line no-control-regex
+    const stripped = (lastFrame() ?? "").replace(/\x1b\[[0-9;]*m/g, "");
+    expect(stripped).toContain("Type here...");
   });
 
   it("types characters when active", async () => {

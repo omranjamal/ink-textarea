@@ -585,17 +585,38 @@ export const TextArea = ({
       <Box flexDirection="column" width="100%">
         {Array.from({ length: visibleCount }, (_, k) => {
           const i = visibleRowStart + k;
-          return renderLine(
-            <Text {...textProps}>
-              {i === cursorLine && cursorVisible ? "\x1b[7m \x1b[27m" : " "}
-              {placeholderLines[i]
-                ? renderPlaceholderLine(
-                    placeholderLines[i]!,
+          const phLine = placeholderLines[i];
+          const isCursorRow = i === cursorLine && cursorVisible;
+          let content: ReactNode;
+          if (phLine && phLine.length > 0) {
+            const firstChar = phLine[0]!;
+            const restOffset = (placeholderLineStartOffsets[i] ?? 0) + 1;
+            const rest = phLine.slice(1);
+            content = (
+              <Text {...textProps}>
+                {isCursorRow ? (
+                  <Text key="cur">{`\x1b[7m${firstChar}\x1b[27m`}</Text>
+                ) : (
+                  renderPlaceholderLine(
+                    firstChar,
                     placeholderLineStartOffsets[i] ?? 0,
-                    `ph-${i}`,
+                    `ph-${i}-h`,
                   )
-                : null}
-            </Text>,
+                )}
+                {rest.length > 0
+                  ? renderPlaceholderLine(rest, restOffset, `ph-${i}-r`)
+                  : null}
+              </Text>
+            );
+          } else {
+            content = (
+              <Text {...textProps}>
+                {isCursorRow ? "\x1b[7m \x1b[27m" : " "}
+              </Text>
+            );
+          }
+          return renderLine(
+            content,
             i,
             i,
             initialLineCount,
