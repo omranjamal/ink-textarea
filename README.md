@@ -3,7 +3,7 @@
 
 Build rich CLI forms with a full-featured textarea that supports multi-line editing, cursor navigation, undo, and customizable line prefixes.
 
-<img width="580" alt="ink-textarea demo" src="https://github.com/user-attachments/assets/be19b5af-f0db-479d-a5b1-2c19c8e153ce" />
+<img width="580" alt="react-ink-textarea demo" src="https://github.com/user-attachments/assets/fbd7325e-4b16-4fde-96f6-e02a1b839cb9" />
 
 
 ## Contents
