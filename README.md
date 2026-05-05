@@ -1,7 +1,8 @@
 # react-ink-textarea
 > A multiline textarea component for [Ink](https://github.com/vadimdemedes/ink)
 
-<img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/omranjamal/react-ink-textarea"> <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/react-ink-textarea"> <img alt="NPM Version" src="https://img.shields.io/npm/v/react-ink-textarea"> <img alt="NPM License" src="https://img.shields.io/npm/l/react-ink-textarea">
+<img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/omranjamal/react-ink-textarea"> <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/react-ink-textarea"> <img alt="NPM Version" src="https://img.shields.io/npm/v/react-ink-textarea"> <img alt="NPM License" src="https://img.shields.io/npm/l/react-ink-textarea"> <img alt="GitHub forks" src="https://img.shields.io/github/forks/omranjamal/react-ink-textarea?style=flat">
+
 
 
 
