@@ -1,6 +1,6 @@
 {
   "name": "react-ink-textarea",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A multiline textarea component for Ink",
   "type": "module",
   "sideEffects": false,
