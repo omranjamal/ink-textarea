@@ -11,12 +11,6 @@ importers:
       ansi-styles:
         specifier: ^6.2.3
         version: 6.2.3
-      ink:
-        specifier: ^7.0.1
-        version: 7.0.1(@types/react@19.2.14)(react@19.2.5)
-      react:
-        specifier: ^19.2.5
-        version: 19.2.5
       string-width:
         specifier: ^8.2.1
         version: 8.2.1
@@ -27,12 +21,18 @@ importers:
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
+      ink:
+        specifier: ^7.0.1
+        version: 7.0.1(@types/react@19.2.14)(react@19.2.5)
       ink-testing-library:
         specifier: ^4.0.0
         version: 4.0.0(@types/react@19.2.14)
       prettier:
         specifier: ^3.8.3
         version: 3.8.3
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
